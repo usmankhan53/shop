@@ -6,28 +6,23 @@ const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
-
-// ✅ Enable CORS for all routes (allow frontend requests)
 app.use(cors());
-
 app.use(bodyParser.json());
 
-// 👉 Default route (check if backend is live)
+// Default route
 app.get("/", (req, res) => {
   res.json({
     message: "✅ Backend is live! Use POST /api/checkout to create a payment."
   });
 });
 
-// 👉 API: Checkout (creates Cryptomus payment)
+// Checkout route
 app.post("/api/checkout", async (req, res) => {
   try {
     const { amount, currency = "USDT", order_id } = req.body;
 
     if (!amount || !order_id) {
-      return res
-        .status(400)
-        .json({ error: "amount and order_id are required" });
+      return res.status(400).json({ error: "amount and order_id are required" });
     }
 
     const payload = { amount: String(amount), currency, order_id };
@@ -56,12 +51,5 @@ app.post("/api/checkout", async (req, res) => {
   }
 });
 
-// ✅ Export for Vercel
+// ✅ Vercel expects a function export
 module.exports = app;
-
-// ✅ Run locally
-if (require.main === module) {
-  app.listen(3000, () =>
-    console.log("Checkout API running at http://localhost:3000/api/checkout")
-  );
-}
