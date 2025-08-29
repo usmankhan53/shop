@@ -12,7 +12,7 @@ app.use(bodyParser.json());
 // Default route
 app.get("/", (req, res) => {
   res.json({
-    message: "✅ Backend is ! Use POST /api/checkout to create a payment."
+    message: "✅ Backend is live ! Use POST /api/checkout to create a payment."
   });
 });
 
