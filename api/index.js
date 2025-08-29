@@ -2,40 +2,42 @@ const express = require("express");
 const bodyParser = require("body-parser");
 const axios = require("axios");
 const crypto = require("crypto");
+const cors = require("cors");
 require("dotenv").config();
 
 const app = express();
-app.set("view engine", "ejs");
-app.use(bodyParser.urlencoded({ extended: true }));
 
-// Dummy cart
-const CART = [
-  { name: "Phone", price: 500 },
-  { name: "Headphones", price: 50 }
-];
+// ✅ Enable CORS for all routes (allow frontend requests)
+app.use(cors());
 
-// Show cart
+app.use(bodyParser.json());
+
+// 👉 Default route (check if backend is live)
 app.get("/", (req, res) => {
-  const total = CART.reduce((sum, p) => sum + p.price, 0);
-  res.render("cart", { cart: CART, total });
+  res.json({
+    message: "✅ Backend is live! Use POST /api/checkout to create a payment."
+  });
 });
 
-app.get("/checkout", async (req, res) => {
-  const total = CART.reduce((sum, p) => sum + p.price, 0);
-
-  const payload = {
-    amount: String(total),
-    currency: "USDT",
-    order_id: "ORDER-001"
-  };
-
-  const payloadStr = JSON.stringify(payload);
-  const sign = crypto
-    .createHash("md5")
-    .update(Buffer.from(payloadStr + process.env.CRYPTOMUS_API_KEY))
-    .digest("hex");
-
+// 👉 API: Checkout (creates Cryptomus payment)
+app.post("/api/checkout", async (req, res) => {
   try {
+    const { amount, currency = "USDT", order_id } = req.body;
+
+    if (!amount || !order_id) {
+      return res
+        .status(400)
+        .json({ error: "amount and order_id are required" });
+    }
+
+    const payload = { amount: String(amount), currency, order_id };
+    const payloadStr = JSON.stringify(payload);
+
+    const sign = crypto
+      .createHash("md5")
+      .update(Buffer.from(payloadStr + process.env.CRYPTOMUS_API_KEY))
+      .digest("hex");
+
     const response = await axios.post(
       "https://api.cryptomus.com/v1/payment",
       payload,
@@ -43,23 +45,23 @@ app.get("/checkout", async (req, res) => {
         headers: {
           merchant: process.env.CRYPTOMUS_MERCHANT_ID,
           sign,
-          "Content-Type": "application/json"
-        }
+          "Content-Type": "application/json",
+        },
       }
     );
 
-    const data = response.data;
-
-    res.render("checkout", {
-      payform: data.result?.url ? `<iframe src="${data.result.url}" width="600" height="400"></iframe>` : null,
-      error: data.result?.url ? null : JSON.stringify(data)
-    });
-
+    res.json(response.data);
   } catch (err) {
-    res.render("checkout", { payform: null, error: err.message });
+    res.status(500).json({ error: err.message });
   }
 });
 
+// ✅ Export for Vercel
+module.exports = app;
 
-// Start server
-app.listen(3000, () => console.log("Server running at http://localhost:3000"));
+// ✅ Run locally
+if (require.main === module) {
+  app.listen(3000, () =>
+    console.log("Checkout API running at http://localhost:3000/api/checkout")
+  );
+}
