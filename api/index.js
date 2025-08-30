@@ -16,41 +16,57 @@ app.get("/", (req, res) => {
   });
 });
 
+
+// ✅ Helper: generate sign as per docs
+function makeSign(payload, apiKey) {
+  const data = JSON.stringify(payload);
+  const base64 = Buffer.from(data).toString("base64");
+  return crypto.createHash("md5").update(base64 + apiKey).digest("hex");
+}
+
 // Checkout route
 app.post("/api/checkout", async (req, res) => {
   try {
     const { amount, currency = "USDT", order_id } = req.body;
 
     if (!amount || !order_id) {
-      return res.status(400).json({ error: "amount and order_id are required" });
+      return res
+        .status(400)
+        .json({ error: "amount and order_id are required" });
     }
 
-    const payload = { amount: String(amount), currency, order_id };
-    const payloadStr = JSON.stringify(payload);
+    // Build payload
+    const payload = {
+      amount: String(amount),
+      currency,
+      order_id,
+      // optionally you can add url_callback, lifetime, etc.
+    };
 
-    const sign = crypto
-      .createHash("md5")
-      .update(Buffer.from(payloadStr + process.env.CRYPTOMUS_API_KEY))
-      .digest("hex");
+    // ✅ Correct signature
+    const sign = makeSign(payload, process.env.CRYPTOMUS_API_KEY);
 
+    // ✅ Correct request with merchant header
     const response = await axios.post(
       "https://api.cryptomus.com/v1/payment",
       payload,
       {
         headers: {
-          merchant: process.env.CRYPTOMUS_MERCHANT_ID,
+          merchant: process.env.CRYPTOMUS_MERCHANT_ID, // <- your merchant UUID from dashboard
           sign,
           "Content-Type": "application/json",
         },
       }
     );
-    // ✅ If API gives HTML form inside response.data.payform
+
+    // ✅ If Cryptomus returns payform HTML, return it
     if (response.data.payform) {
-      res.send(response.data.payform); // return HTML directly
+      res.send(response.data.payform);
     } else {
-      res.json(response.data); // fallback: return JSON
+      res.json(response.data);
     }
   } catch (err) {
+    console.error("Checkout error:", err.response?.data || err.message);
     res.status(500).json({ error: err.message });
   }
 });
