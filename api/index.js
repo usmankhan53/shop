@@ -44,8 +44,8 @@ app.post("/api/checkout", async (req, res) => {
         },
       }
     );
-
-    res.json(response.data);
+    response.json().get("html")
+    // res.json(response.data);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
