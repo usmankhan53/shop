@@ -34,7 +34,7 @@ app.post("/api/checkout", async (req, res) => {
       .digest("hex");
 
     const response = await axios.post(
-      "https://api.cryptomus.com/v1/payment",
+      "https://api.cryptomus.com/v1/payform",
       payload,
       {
         headers: {
