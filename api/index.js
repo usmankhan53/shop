@@ -44,8 +44,12 @@ app.post("/api/checkout", async (req, res) => {
         },
       }
     );
-    response.json().get("html")
-    // res.json(response.data);
+    // ✅ If API gives HTML form inside response.data.payform
+    if (response.data.payform) {
+      res.send(response.data.payform); // return HTML directly
+    } else {
+      res.json(response.data); // fallback: return JSON
+    }
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
